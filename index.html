@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Digital Clock with Multiple Alarms</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+        }
+        #date {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        #clock {
+            font-size: 50px;
+            margin-bottom: 25px;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.6);
+        }
+        .alarm input {
+            font-size: 16px;
+            padding: 10px;
+            width: 90%;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .alarm button {
+            background-color: #00c9a7;
+            color: white;
+            font-size: 16px;
+            padding: 10px 20px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .alarm button:hover {
+            background-color: #00a58b;
+        }
+        .alarm-list {
+            margin-top: 20px;
+            text-align: left;
+            width: 100%;
+        }
+        .alarm-item {
+            background-color: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ringing {
+            color: #ff4d4d;
+            font-size: 20px;
+            margin-top: 20px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        footer {
+            font-size: 14px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            width: 100%;
+            padding: 10px 0;
+            margin-top: 30px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="date">Loading date...</div>
+        <div id="clock">Loading time...</div>
+
+        <div class="alarm">
+            <input type="text" id="alarmInput" placeholder="HH:MM:SS">
+            <input type="text" id="labelInput" placeholder="Alarm Label (Optional)">
+            <br>
+            <button onclick="addAlarm()">Set Alarm</button>
+        </div>
+
+        <div class="alarm-list" id="alarmList">
+            <h3>Your Alarms:</h3>
+            <div id="alarmsContainer">No alarms set.</div>
+        </div>
+
+        <div id="alarmMessage" class="ringing" style="display: none;">
+            ⏰ <span id="alarmLabelMsg">Alarm Ringing!</span> ⏰<br>
+            <button onclick="stopAlarm()">Stop Alarm</button>
+        </div>
+    </div>
+
+    <audio id="alarmSound" src="alarm.mp3" preload="auto" loop></audio>
+
+    <footer>
+        Developed by <strong>VEERAPANDI</strong>, <strong>Naveen Kanth</strong>, and <strong>Janaji</strong>.
+    </footer>
+
+    <script>
+        let alarms = [];
+        let ringingAlarmIndex = null;
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toTimeString().split(" ")[0];
+            const dateStr = now.toDateString();
+
+            document.getElementById('clock').textContent = timeStr;
+            document.getElementById('date').textContent = dateStr;
+
+            alarms.forEach((alarm, index) => {
+                if (timeStr === alarm.time && !alarm.triggered) {
+                    triggerAlarm(index);
+                }
+            });
+        }
+
+        function addAlarm() {
+            const timeInput = document.getElementById('alarmInput').value.trim();
+            const labelInput = document.getElementById('labelInput').value.trim();
+
+            if (!timeInput.match(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/)) {
+                alert("Invalid time format! Use HH:MM:SS");
+                return;
+            }
+
+            alarms.push({ time: timeInput, label: labelInput || "No Label", triggered: false });
+            updateAlarmList();
+            document.getElementById('alarmInput').value = "";
+            document.getElementById('labelInput').value = "";
+        }
+
+        function updateAlarmList() {
+            const container = document.getElementById('alarmsContainer');
+            if (alarms.length === 0) {
+                container.innerHTML = "No alarms set.";
+                return;
+            }
+
+            container.innerHTML = "";
+            alarms.forEach((alarm, index) => {
+                const alarmDiv = document.createElement('div');
+                alarmDiv.className = 'alarm-item';
+                alarmDiv.innerHTML = `
+                    <div>
+                        <strong>${alarm.time}</strong> - ${alarm.label}
+                    </div>
+                    <button onclick="deleteAlarm(${index})">Delete</button>
+                `;
+                container.appendChild(alarmDiv);
+            });
+        }
+
+        function deleteAlarm(index) {
+            alarms.splice(index, 1);
+            updateAlarmList();
+        }
+
+        function triggerAlarm(index) {
+            document.getElementById('alarmMessage').style.display = 'block';
+            document.getElementById('alarmLabelMsg').textContent = `⏰ ${alarms[index].label} ⏰`;
+            const alarmSound = document.getElementById('alarmSound');
+            alarmSound.play();
+            alarms[index].triggered = true;
+            ringingAlarmIndex = index;
+        }
+
+        function stopAlarm() {
+            document.getElementById('alarmMessage').style.display = 'none';
+            const alarmSound = document.getElementById('alarmSound');
+            alarmSound.pause();
+            alarmSound.currentTime = 0;
+
+            if (ringingAlarmIndex !== null) {
+                alarms.splice(ringingAlarmIndex, 1);
+                ringingAlarmIndex = null;
+                updateAlarmList();
+            }
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>
